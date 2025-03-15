@@ -5,7 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>home</title>
 </head>
+<style>
+    .nav
+    {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+    }
+</style>
 <body>
-    <h1>one home page</h1>
+    <div class="nav">
+        <h2>nevara</h2>
+        <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+            <form action="/logout" method="POST">
+                <button type="submit">Logout</button>
+            </form>
+        <% } else { %>
+            <a href="/login"><button>login</button></a>
+            <% } %>
+    </div>
+    <!-- <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+        <p>welcome <%= currentUser.userName %></p>
+    <% } %> -->
 </body>
 </html>

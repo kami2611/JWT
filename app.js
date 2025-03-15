@@ -14,13 +14,30 @@ mongoose.connect('mongodb://127.0.0.1:27017/JWT-auth').then(() => {
 }).catch((err) => {
     console.log("Err mongoose!");
 });
+app.use(cookieJwtAuth);
+app.use((req, res, next)=>{
+    if(req.user){
+        res.locals.currentUser = req.user;
+        console.log('user exists in this local middleware and being set');
+        console.log(res.locals.currentUser);
+    }
+    next();
+});
+app.post('/logout', (req, res)=>{
+    res.clearCookie('token');
+    res.redirect('/login');
+});
 app.get('/home', (req, res)=>{
     res.render('home');
 });
+app.get('/dummy', (req, res)=>{
+    res.send("dummy");
+})
 
 app.get('/register', (req,res)=>{
     res.render('register');
 });
+
 app.post('/register', async(req, res)=>{
     try {
         const {username, password} = req.body;
@@ -38,7 +55,7 @@ app.post('/register', async(req, res)=>{
     }
     return res.redirect('/home');
 });
-app.get('/login', (req, res)=>{
+app.get('/login',(req, res)=>{
     res.render('login');
 })
 
@@ -61,28 +78,45 @@ app.post('/login', async(req, res)=>{
         return res.redirect('/login');
     }
 });
-app.get('/add',cookieJwtAuth, (req, res)=>{
-    res.send('only logged in users can do this. lol');
+app.get('/add',authMiddleWare, (req, res)=>{
+    // console.log(req.user);
+    res.send('only logged in users can do this');
 });
-app.get('/topSecret', cookieJwtAuth, (req, res)=>{
+app.get('/topSecret',authMiddleWare, (req, res)=>{
     res.send('shh, i am an intern on nevera solutions');
 });
 
 app.listen(3000, ()=>{
     console.log('ON PORT 3000');
-})
+});
+
+
+function authMiddleWare(req, res, next)
+{
+    if(!req.user)
+    {
+        return res.redirect('/login');
+    }
+    next();
+}
+
 function cookieJwtAuth(req, res, next)
 {
+    const token = req.cookies.token;
+    if(!token)
+    {
+        req.user = null;
+        return next();
+    }
     try {
-        const token = req.cookies.token;
+        
         const user = jwt.verify(token, secretKey);
         req.user = user;
-        console.log(user);
-        // console.log(token);
         next();
     } catch (error) {
         console.log('you must be signed in to access this');
+        req.user = null;
         console.log(error);
-        res.redirect('/login');
+        return res.redirect('/login');
     }
-}
+};
