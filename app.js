@@ -12,7 +12,7 @@ app.set('view engine', 'ejs');
 mongoose.connect('mongodb://127.0.0.1:27017/JWT-auth').then(() => {
     console.log("Mongoose Server Started!");
 }).catch((err) => {
-    console.log("Err mongoose!");
+    console.log("Err mongoose!", err);
 });
 app.use(cookieJwtAuth);
 app.use((req, res, next) => {
@@ -23,19 +23,22 @@ app.use((req, res, next) => {
     }
     next();
 });
-app.post('/logout', (req, res) => {
-    res.clearCookie('token');
-    res.clearCookie('refreshToken');  // Clear refresh token too
-    res.redirect('/login');
-});
+
 
 app.get('/home', (req, res) => {
-    res.render('home');
+    try {
+        res.render('home'); 
+    } catch (error) {
+        res.sendStatus(500);
+    }
 });
 
-
 app.get('/register', (req, res) => {
-    res.render('register');
+    try {
+        res.render('register');
+    } catch (error) {
+        res.sendStatus(500);
+    }
 });
 
 app.post('/register', async (req, res) => {
@@ -54,11 +57,16 @@ app.post('/register', async (req, res) => {
         res.cookie("refreshToken", refreshToken, { httpOnly: true });
     } catch (error) {
         console.log(error);
+        res.sendStatus(500);
     }
     return res.redirect('/home');
 });
 app.get('/login', (req, res) => {
-    res.render('login');
+    try {
+        res.render('login');
+    } catch (error) {
+        res.sendStatus(500);
+    }
 });
 
 app.post('/login', async (req, res) => {
@@ -76,8 +84,17 @@ app.post('/login', async (req, res) => {
         }
     }
     else {
-        console.log('not authenticated');
+        console.log('internal server error. server could not handle the request');
         return res.redirect('/login');
+    }
+});
+app.post('/logout', (req, res) => {
+    try {
+        res.clearCookie('token');
+        res.clearCookie('refreshToken');  
+        res.redirect('/login');
+    } catch (error) {
+        res.sendStatus(500);
     }
 });
 
@@ -109,7 +126,6 @@ app.listen(3000, () => {
     console.log('ON PORT 3000');
 });
 
-
 function authMiddleWare(req, res, next) {
     if (!req.user) {
         return res.redirect('/login');
@@ -130,19 +146,17 @@ function cookieJwtAuth(req, res, next) {
         return next();
     } catch (error) {
         if (error.name === "TokenExpiredError") {
-            console.log("Access token expired, trying to refresh...");
-
+            console.log("Access token expired, automatically refreshing it...");
             const refreshToken = req.cookies.refreshToken;
             if (!refreshToken) {
                 return res.redirect('/login');
             }
-
             try {
                 const user = jwt.verify(refreshToken, secretKey);
                 const newAccessToken = jwt.sign({ userID: user.userID }, secretKey, { expiresIn: '30s' });
 
                 res.cookie("token", newAccessToken, { httpOnly: true });
-                req.user = jwt.verify(newAccessToken, secretKey); // Set the new user object
+                req.user = jwt.verify(newAccessToken, secretKey);
                 return next();
             } catch (refreshError) {
                 console.log("Refresh token invalid:", refreshError.message);
